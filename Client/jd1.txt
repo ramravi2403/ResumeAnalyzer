@@ -1,0 +1,3 @@
+We are looking for a Data Scientist with expertise in Python, machine learning, and deep learning.
+Experience with NLP and cloud platforms (AWS, GCP, or Azure) is preferred.
+Candidates should have strong problem-solving skills and a background in mathematics or statistics.

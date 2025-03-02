@@ -11,7 +11,6 @@ class AnalyzerAgent:
         load_dotenv(dotenv_path=dotenv_path)
         os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
         self.__llm = ChatOpenAI(model_name="gpt-3.5-turbo")
-        # self.coursera_courses = pd.read_csv(coursera_courses_filepath)
 
     def analyze_resume(self, full_resume, job_description):
         template = """
