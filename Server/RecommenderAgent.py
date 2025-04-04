@@ -1,4 +1,5 @@
 import csv
+import json
 import os
 import re
 import unicodedata
@@ -9,6 +10,7 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_openai import ChatOpenAI
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
+CACHE_FILE = "./embeddings_cache.json"
 
 
 class RecommendationAgent:
@@ -32,7 +34,20 @@ class RecommendationAgent:
         text = re.sub(r'[^\w\s.,!?-]', '', text)
         return text.strip()
 
+    def load_cache(self):
+        if os.path.exists(CACHE_FILE):
+            with open(CACHE_FILE, "r") as f:
+                return json.load(f)
+        return {}
+
+    def save_cache(self,cache):
+        with open(CACHE_FILE, "w") as f:
+            json.dump(cache, f)
+
     def embed_courses(self):
+        cache = self.load_cache()
+        if cache:
+            return cache
         embedded_courses = []
         for course in self.course_data:
             text_to_embed = course["course_skills"]
@@ -42,6 +57,7 @@ class RecommendationAgent:
                 "course_skills": course["course_skills"],
                 "course_title": course["course_title"]
             })
+        self.save_cache(cache)
         return embedded_courses
 
     def recommend_courses_by_similarity(self, unmatched_skills):
@@ -84,7 +100,6 @@ class RecommendationAgent:
         return self.process_recommendations(response)
 
     def process_recommendations(self, response):
-        print(response)
         recommendations = []
         for line in response.content.split('\n'):
             if line.strip().startswith("Course Title:"):
@@ -93,8 +108,4 @@ class RecommendationAgent:
                     break
         return response.content
 
-# Usage
-# recommendation_agent = RecommendationAgent('path_to_your_course_data.csv')
-# unmatched_skills = ["Python", "Data Analysis", "Machine Learning"]
-# recommendations = recommendation_agent.recommend_courses(unmatched_skills)
-# print(recommendations)
+
