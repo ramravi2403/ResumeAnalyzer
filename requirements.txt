@@ -1,6 +1,16 @@
+
+accelerate==1.1.0
 langchain-openai
 langchain_community
 langchain-huggingface
+langchain-chroma
+langchain
 pypdf
+openai
 faiss-cpu
 python-dotenv
+pandas
+streamlit
+sentence-transformers==3.4.1
+transformers==4.50.3
+

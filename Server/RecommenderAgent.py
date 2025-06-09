@@ -4,6 +4,7 @@ import os
 import re
 import unicodedata
 import numpy as np
+import pandas as pd
 from sklearn.metrics.pairwise import cosine_similarity
 from langchain_core.prompts import PromptTemplate
 from langchain_huggingface import HuggingFaceEmbeddings

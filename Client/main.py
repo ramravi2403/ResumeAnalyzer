@@ -10,20 +10,42 @@ from Server import AnalyzerAgent
 from Server.RecommenderAgent import RecommendationAgent
 from langchain_core.caches import InMemoryCache
 from langchain_core.globals import set_llm_cache
+
+
 set_llm_cache(InMemoryCache())
 
+st.set_page_config(page_title="Resume Analyzer")
+
 course_data_file = "./Server/downsized_dataset.csv"
-analyzer_agent = AnalyzerAgent.AnalyzerAgent()
+
+@st.cache_resource
+def load_analyzer_agent():
+    """Load the AnalyzerAgent with the course data file."""
+    return AnalyzerAgent.AnalyzerAgent()
+
+
+@st.cache_resource
+def load_recommendation_agent():
+    
+    """Load the RecommendationAgent with the course data file."""
+    return RecommendationAgent(course_data_file=course_data_file)
+
+analyzer_agent = load_analyzer_agent()
+recommendation_agent = load_recommendation_agent()
 
 
 
 st.title("Resume Analyzer")
+
 st.info("A tool to check the compatibility of a client resume to job description")
 
 st.image("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQbxSJQjfrstR6vB4kNHKfNTfeI0JbnaooMzQ&s")
 
 job_desc = st.text_area(label="Job Description", 
              placeholder="Enter job description here", height=300, key="job-desc-input")
+
+
+
 
 uploaded_file = st.file_uploader("Upload Resume (PDF)", type=["pdf"], key="resume-pdf-upload")
 recommender_checked = st.checkbox("Recommend Courses")
@@ -42,7 +64,7 @@ if submitted:
             if recommender_checked:
                 
                 st.header("\nCourse Recommendations")
-                recommendation_agent = RecommendationAgent(course_data_file)
+                
                 unmatched_skills = []
                 for line in analysis_result.split("\n"):
                     if "Unmatched Skills" in line:
