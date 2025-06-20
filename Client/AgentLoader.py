@@ -1,5 +1,8 @@
+import sys,os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from Server import AnalyzerAgent, RecommendationAgent
 from streamlit import cache_resource
+
 
 class AgentLoader:
 

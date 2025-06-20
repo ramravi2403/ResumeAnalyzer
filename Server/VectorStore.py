@@ -1,104 +1,101 @@
 import pandas as pd
 import os
-import re
-import unicodedata
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
-from langchain_core.documents import Document
-from tqdm import tqdm
-from langchain.prompts import PromptTemplate
-from langchain_openai import ChatOpenAI
-from sklearn.metrics.pairwise import cosine_similarity
-import numpy as np
+from dotenv import load_dotenv
 
-
-os.environ["TOKENIZERS_PARALLELISM"] = "false"
-DB_PATH = "./courses_db"
+os.environ["TOKENIZERS_PARALLELISM"] = "false" #remove?
+DB_PATH = "./Server/courses_db"
 
 
 class VectorStore:
-    def __init__(self, df_path, model_name="sentence-transformers/all-mpnet-base-v2"):
-        self.vector_store = None
-        self.df = pd.read_csv(df_path)
-        self.vector_store = Chroma(
-            collection_name="courses",
-            persist_directory=DB_PATH,
-            embedding_function=HuggingFaceEmbeddings(model_name=model_name)
-        )
+    def __init__(self, df_path, validate=False) -> None:
+        load_dotenv()
+        if os.path.exists(DB_PATH) and len(os.listdir(DB_PATH)) > 0:
+            print("Loading existing vector db.....")
+            self.vector_store = Chroma(persist_directory=DB_PATH, embedding_function=HuggingFaceEmbeddings(
+                model_name="sentence-transformers/all-mpnet-base-v2"), collection_name="courses")
+        else:
+            print("Creating new vector store....")
+            self.vector_store = self.__create_vector_store(df_path)
         self.retriever = None
-        
-    def __clean_text(self, text):
-        text = unicodedata.normalize('NFKD', str(text)).encode('ASCII', 'ignore').decode('ASCII')
-        text = re.sub(r'[^\w\s.,!?-]', '', str(text))
-        return text.strip()
-    
-    def __index(self):
-            docs = []
-            ids = []
-            with tqdm(self.df.iterrows()) as t:
-                t.set_description("Indexing")
-                for i, row in t:
-                    row = row.map(self.__clean_text)
-                    document = Document(
-                        page_content="||".join([row["course_title"], row["course_skills"]]),
-                        metadata={"course_rating": row["course_rating"]},
-                        id = str(i)
-                        )
-                    ids.append(str(i))
-                    docs.append(document)
-                    
-                
-                self.vector_store.add_documents(documents=docs, ids=ids)
-    
-    def build(self ,rebuild=False):
-        if not self.vector_store._collection.count() or rebuild:
-            self.__index()
-        return self
-            
-    def load_retriever(self, k=3):
-        if self.retriever is None:
-            self.retriever = self.vector_store.as_retriever(search_type="similarity",search_kwargs={'k':k})
-        return self.retriever
+        if validate:
+            self.validate_vector_store_size(df_path)
+
+    def __create_vector_store(self, df_path: str) -> Chroma:
+        df = pd.read_csv(df_path)
+        texts = df['Course Name'] + ". " + df['Course Description'] + ". Skills: " + df['Skills'].fillna('')
+        metadata = df[['Course Name', 'Course Rating', 'Difficulty Level', 'University', 'Course URL']].to_dict(orient="records")
+        ids = df.index.astype(str).tolist()
+
+        return Chroma.from_texts(
+            texts=texts.tolist(),
+            embedding=HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2"),
+            metadatas=metadata,
+            ids=ids,
+            collection_name="courses",
+            persist_directory=DB_PATH
+        )
+
+    def search_courses(self, query: str, k: int = 3, min_rating: float = 0.0, difficulty: str = None):
+        results = self.vector_store.similarity_search_with_score(query, k=k * 2)  # Get more results for filtering
+        filtered_results = []
+        for doc, score in results:
+            try:
+                course_rating = doc.metadata.get('Course Rating', 0)
+                if isinstance(course_rating, str):
+                    try:
+                        course_rating = float(course_rating)
+                    except (ValueError, TypeError):
+                        course_rating = 0.0
+
+                if course_rating >= min_rating:
+                    if difficulty and difficulty.lower() in ['beginner', 'intermediate', 'advanced']:
+                        doc_difficulty = doc.metadata.get('Difficulty Level', '').lower()
+                        if difficulty.lower() == doc_difficulty:
+                            filtered_results.append((doc, score))
+                    else:
+                        filtered_results.append((doc, score))
+
+            except Exception as e:
+                filtered_results.append((doc, score))
+        return filtered_results[:k]
+
+    def validate_vector_store_size(self, df_path: str) -> bool:
+        try:
+            df = pd.read_csv(df_path)
+            csv_count = len(df)
+            collection = self.vector_store._collection
+            vector_count = collection.count()
+
+            print(f"\n=== Vector Store Validation ===")
+            print(f"CSV records: {csv_count}")
+            print(f"Vector store records: {vector_count}")
+
+            if csv_count == vector_count:
+                print("✅ Vector store size matches CSV records!")
+            else:
+                print("Vector store size does NOT match CSV records!")
+                print(f"   Difference: {abs(csv_count - vector_count)} records")
+
+            return csv_count == vector_count
+
+        except Exception as e:
+            print(f"Error validating vector store size: {e}")
+            return False
+
+    def get_vector_store(self) -> Chroma:
+        return self.vector_store
 
 
-
-def get_similar_courses(unmatched_skills):
-    Q = vector_store.load_retriever(k=10).invoke(unmatched_skills)
-    course_data = [str({"Course Title": title, "Skills": skills})
-                 for doc in Q
-                 for title, skills in [doc.page_content.split('||')]]
-    return course_data
-
-
-
-template = """
-Given a list of unmatched skills, recommend the top 3 courses from the dataset below that will help the user acquire the missing skills.
-
-Unmatched Skills: {unmatched_skills}
-
-Available courses:\n\t{course_data}
-
-Recommendations (top 3 courses):
-"""
-
-prompt = PromptTemplate(input_variables=["unmatched_skills", "course_data"], template=template)
-    
-        
 if __name__ == "__main__":
-    
-    from pprint import pprint
-    sample = "NLP, deep learning, cloud platforms (AWS, GCP, Azure), background in mathematics or statistics"
-    courses_data_path = "Server/coursera_courses_english.csv" 
-    
-    vector_store = VectorStore(df_path=courses_data_path).build()
+    vs = VectorStore(df_path="coursera_courses.csv")  # adjust path if needed
 
-    
-    def recommend_courses(unmatched_skills):
-        similar = get_similar_courses(unmatched_skills)
-        llm = ChatOpenAI(model_name="gpt-3.5-turbo")
-        
-        chain = prompt | llm
-        response = chain.invoke({"unmatched_skills": unmatched_skills, "course_data": similar})
-        return response.content
+    query = "Recommend a Beginner course to learn Deep learning. specialization"
+    results = vs.vector_store.similarity_search(query, k=1)
 
-    print(recommend_courses(sample))
+    for i, doc in enumerate(results, 1):
+        print(f"Result {i}")
+        print(f"Text: {doc.page_content[:200]}...")  # truncate for brevity
+        print(f"Metadata: {doc.metadata}")
+        print("—" * 50)
