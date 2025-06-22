@@ -5,16 +5,12 @@ from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 
 
-
 class AnalyzerAgent:
-    def __init__(self):
-        dotenv_path = Path('./.env')
-        load_dotenv(dotenv_path=dotenv_path)
-        os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
+    def __init__(self, path: str = './Server/.env'):
+        load_dotenv(dotenv_path=Path(path),override=True)
         self.__llm = ChatOpenAI(model_name="gpt-3.5-turbo")
 
-    def analyze_resume(self,full_resume, job_description):
-
+    def analyze_resume(self, full_resume, job_description):
         template = """
         You are an AI assistant specialized in resume analysis and recruitment. Analyze the given resume and compare it with the job description. 
 
