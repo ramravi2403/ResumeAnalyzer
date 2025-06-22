@@ -1,6 +1,6 @@
 import sys,os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from Server import AnalyzerAgent, RecommendationAgent
+from Server import AnalyzerAgent
 from streamlit import cache_resource
 
 
@@ -10,7 +10,7 @@ class AgentLoader:
 
     @classmethod
     @cache_resource
-    def load(cls, agent_type: str, data_file: str = _default_course_file):
+    def load(cls, agent_type: str):
         """
         Load a specified agent type, using cache.
 
@@ -23,7 +23,6 @@ class AgentLoader:
         """
         if agent_type == 'analyzer':
             return AnalyzerAgent()
-        elif agent_type == 'recommender':
-            return RecommendationAgent(course_data_file=data_file)
+
         else:
             raise NotImplementedError(f"Unknown agent: {agent_type}")
