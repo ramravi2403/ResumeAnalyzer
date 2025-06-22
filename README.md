@@ -31,19 +31,30 @@ The application leverages Large Language Models (LLMs) through the LangChain fra
     git clone <repository-url>
     cd ResumeAnalyzer
     ```
+2. **Link your OpenAI API key**  
+   You will need an OpenAI API key to use this app. Please create one on https://platform.openai.com/
 
-2.  **Install dependencies:**
+   After you have created one, you will need to create a `.env` file. This `.env` file must be in the project directory root. Then, copy your key into the file using the following template
+
+   ```bash
+   OPENAI_API_KEY="<Your API key goes here>"
+   ```
+
+    
+
+
+3.  **Install dependencies:**
     Make sure you have Python 3.8+ installed.
     ```bash
     pip install -r requirements.txt
     ```
 
-3.  **Run the Streamlit application:**
+4.  **Run the Streamlit application:**
     ```bash
     streamlit run Client/main.py
     ```
 
-4.  Open your browser and go to the local URL provided by Streamlit (usually `http://localhost:8501`).
+5.  Open your browser and go to the local URL provided by Streamlit (usually `http://localhost:8501`).
 
 ### Note 
-The repository contains an existing vector db of the coursera dataset, if this is removed, the initial run will take longer.
+The repository contains an existing vector db instance of the coursera dataset, if this is removed, the initial run will take longer.
