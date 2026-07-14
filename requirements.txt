@@ -12,5 +12,5 @@ python-dotenv
 pandas
 streamlit
 sentence-transformers==3.4.1
-transformers==5.3.0
+transformers==5.5.0
 
